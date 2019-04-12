@@ -4,7 +4,7 @@ import java.awt._
 import java.util
 
 import javax.swing._
-import com.intellij.openapi.editor.event.{DocumentAdapter, DocumentEvent, DocumentListener}
+import com.intellij.openapi.editor.event.{DocumentEvent, DocumentListener}
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.{ComboBox, ValidationInfo}
 import com.intellij.refactoring.BaseRefactoringProcessor
