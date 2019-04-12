@@ -1,17 +1,20 @@
-package org.jetbrains.plugins.scala.lang.psi.api
+package org.jetbrains.plugins.scala
+package lang
+package psi
+package api
 
-import com.intellij.psi.tree.{IElementType, TokenSet}
-import com.intellij.psi.{PsiElement, PsiElementVisitor}
-import org.jetbrains.plugins.scala.lang.psi.ElementScope
-import org.jetbrains.plugins.scala.project.{ProjectContext, ProjectContextOwner}
+import com.intellij.psi.{PsiElement, PsiElementVisitor, tree}
 
-trait ScalaPsiElement extends PsiElement with ProjectContextOwner with Annotatable {
+trait ScalaPsiElement extends PsiElement
+  with project.ProjectContextOwner
+  with Annotatable {
+
   protected var context: PsiElement = null
   protected var child: PsiElement = null
 
   implicit def elementScope: ElementScope = ElementScope(this)
 
-  implicit def projectContext: ProjectContext = this.getProject
+  implicit def projectContext: project.ProjectContext = this.getProject
 
   def isInCompiledFile: Boolean = getContainingFile match {
     case sf: ScalaFile => sf.isCompiled
@@ -21,6 +24,11 @@ trait ScalaPsiElement extends PsiElement with ProjectContextOwner with Annotatab
   def setContext(element: PsiElement, child: PsiElement) {
     context = element
     this.child = child
+  }
+
+  abstract override def getContext: PsiElement = context match {
+    case null => super.getContext
+    case _ => context
   }
 
   def getSameElementInContext: PsiElement =
@@ -50,7 +58,7 @@ trait ScalaPsiElement extends PsiElement with ProjectContextOwner with Annotatab
   protected def findChild[T >: Null <: ScalaPsiElement](clazz: Class[T]): Option[T] =
     Option(findChildByClassScala(clazz))
 
-  def findLastChildByType[T <: PsiElement](t: IElementType): T = {
+  def findLastChildByType[T <: PsiElement](t: tree.IElementType): T = {
     var node = getNode.getLastChildNode
     while (node != null && node.getElementType != t) {
       node = node.getTreePrev
@@ -59,7 +67,7 @@ trait ScalaPsiElement extends PsiElement with ProjectContextOwner with Annotatab
     else node.getPsi.asInstanceOf[T]
   }
 
-  def findFirstChildByType(t: IElementType): PsiElement = {
+  def findFirstChildByType(t: tree.IElementType): PsiElement = {
     var node = getNode.getFirstChildNode
     while (node != null && node.getElementType != t) {
       node = node.getTreeNext
@@ -67,7 +75,7 @@ trait ScalaPsiElement extends PsiElement with ProjectContextOwner with Annotatab
     if (node == null) null else node.getPsi
   }
 
-  def findChildrenByType(t: IElementType): List[PsiElement] = {
+  def findChildrenByType(t: tree.IElementType): List[PsiElement] = {
     val buffer = new collection.mutable.ArrayBuffer[PsiElement]
     var node = getNode.getFirstChildNode
     while (node != null) {
@@ -77,7 +85,7 @@ trait ScalaPsiElement extends PsiElement with ProjectContextOwner with Annotatab
     buffer.toList
   }
 
-  def findLastChildByType(set: TokenSet): PsiElement = {
+  def findLastChildByType(set: tree.TokenSet): PsiElement = {
     var node = getNode.getLastChildNode
     while (node != null && !set.contains(node.getElementType)) {
       node = node.getTreePrev
@@ -93,11 +101,9 @@ trait ScalaPsiElement extends PsiElement with ProjectContextOwner with Annotatab
     if (child == null) None else Some(child.asInstanceOf[T])
   }
 
-  abstract override def accept(visitor: PsiElementVisitor) {
-    visitor match {
-      case visitor: ScalaElementVisitor => acceptScala(visitor)
-      case _ => super.accept(visitor)
-    }
+  abstract override def accept(visitor: PsiElementVisitor): Unit = visitor match {
+    case visitor: ScalaElementVisitor => acceptScala(visitor)
+    case _ => super.accept(visitor)
   }
 
   protected def acceptScala(visitor: ScalaElementVisitor): Unit = {

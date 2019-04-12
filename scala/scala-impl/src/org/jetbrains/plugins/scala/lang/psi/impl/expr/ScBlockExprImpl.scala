@@ -21,14 +21,6 @@ class ScBlockExprImpl(elementType: ILazyParseableElementType, buffer: CharSequen
   extends LazyParseablePsiElement(elementType, buffer)
     with ScBlockExpr with ScExpressionAnnotator {
 
-  //todo: bad architecture to have it duplicated here, as ScBlockExprImpl is not instance of ScalaPsiElementImpl
-  override def getContext: PsiElement = {
-    context match {
-      case null => super.getContext
-      case _ => context
-    }
-  }
-
   override def toString: String = "BlockExpression"
 
   override def hasCaseClauses: Boolean = caseClauses.isDefined
