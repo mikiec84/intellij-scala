@@ -16,7 +16,6 @@ import org.jetbrains.plugins.scala.settings.ScalaProjectSettings
 import org.jetbrains.plugins.scala.util.ScalaUtil
 
 import scala.annotation.tailrec
-import scala.collection.mutable
 import scala.meta.intellij.psi
 
 /**
@@ -25,7 +24,7 @@ import scala.meta.intellij.psi
 class ScalaPsiBuilderImpl(delegate: PsiBuilder)
   extends PsiBuilderAdapter(delegate) with ScalaPsiBuilder {
 
-  private val newlinesEnabled = new mutable.Stack[Boolean]
+  private val newlinesEnabled = new java.util.Stack[Boolean]
 
   private lazy val maybePsiFile = Option {
     myDelegate.getUserData(FileContextUtil.CONTAINING_FILE_KEY)
@@ -59,7 +58,7 @@ class ScalaPsiBuilderImpl(delegate: PsiBuilder)
   }
 
   override final def restoreNewlinesState(): Unit = {
-    assert(newlinesEnabled.nonEmpty)
+    assert(!newlinesEnabled.empty())
     newlinesEnabled.pop()
   }
 
@@ -72,7 +71,7 @@ class ScalaPsiBuilderImpl(delegate: PsiBuilder)
         maybeScalaVersion.exists(_ >= Version("2.12"))
     }
 
-  protected final def isNewlinesEnabled: Boolean = newlinesEnabled.isEmpty || newlinesEnabled.top
+  protected final def isNewlinesEnabled: Boolean = newlinesEnabled.isEmpty || newlinesEnabled.peek()
 
   final def findPreviousNewLine: Option[String] = whiteSpacesAndComments(1)
 
