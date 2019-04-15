@@ -19,7 +19,14 @@ import org.jetbrains.plugins.scala.lang.psi.api.{ScalaElementVisitor, ScalaPsiEl
 */
 class ScBlockExprImpl(elementType: ILazyParseableElementType, buffer: CharSequence)
   extends LazyParseablePsiElement(elementType, buffer)
-    with ScBlockExpr with ScExpressionAnnotator {
+    with ScBlockExpr
+    with ScExpressionAnnotator {
+
+  override final def context: PsiElement = super.context
+
+  override final def context_=(context: PsiElement): Unit = super.context_=(context)
+
+  override final def getContext: PsiElement = super.getContext
 
   override def toString: String = "BlockExpression"
 
