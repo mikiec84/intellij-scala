@@ -22,12 +22,6 @@ class ScBlockExprImpl(elementType: ILazyParseableElementType, buffer: CharSequen
     with ScBlockExpr
     with ScExpressionAnnotator {
 
-  override final def context: PsiElement = super.context
-
-  override final def context_=(context: PsiElement): Unit = super.context_=(context)
-
-  override final def getContext: PsiElement = super.getContext
-
   override def toString: String = "BlockExpression"
 
   override def hasCaseClauses: Boolean = caseClauses.isDefined
