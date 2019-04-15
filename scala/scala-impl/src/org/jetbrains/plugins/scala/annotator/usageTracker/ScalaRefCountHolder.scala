@@ -2,6 +2,7 @@ package org.jetbrains.plugins.scala
 package annotator
 package usageTracker
 
+import java.util.concurrent.ScheduledFuture
 import java.{util => ju}
 
 import com.intellij.codeHighlighting.Pass
@@ -167,22 +168,32 @@ final class ScalaRefCountHolderComponent(project: Project) extends ProjectCompon
 
   private val autoCleaningMap = Ref.create[TimestampedValueMap[String, ScalaRefCountHolder]]
 
+  private var myCleanUpFuture: ScheduledFuture[_] = _
+
   override def projectOpened(): Unit = {
     autoCleaningMap.set(new TimestampedValueMap())
 
-    val cleanupRunnable: Runnable = () => autoCleaningMap.get.removeStaleEntries()
-
-    JobScheduler.getScheduler.scheduleWithFixedDelay(
-      cleanupRunnable,
+    myCleanUpFuture = JobScheduler.getScheduler.scheduleWithFixedDelay(
+      cleanupTask(autoCleaningMap),
       CleanupDelay,
       CleanupDelay,
       ju.concurrent.TimeUnit.MILLISECONDS
     )
 
-    LowMemoryWatcher.register(cleanupRunnable, project)
+    LowMemoryWatcher.register(cleanupTask(autoCleaningMap), project)
   }
 
-  override def projectClosed(): Unit = autoCleaningMap.set(null)
+  override def projectClosed(): Unit = {
+    if (myCleanUpFuture != null) {
+      myCleanUpFuture.cancel(false)
+      myCleanUpFuture = null
+    }
+    autoCleaningMap.set(null)
+  }
+
+  private def cleanupTask(map: Ref[TimestampedValueMap[String, ScalaRefCountHolder]]): Runnable = () => {
+    map.get().removeStaleEntries()
+  }
 
   def getOrCreate(key: String, holder: => ScalaRefCountHolder): ScalaRefCountHolder = {
     autoCleaningMap.get match {
