@@ -4,8 +4,6 @@ package lang
 import com.intellij.lang.PsiBuilder
 import com.intellij.psi.tree.IElementType
 
-import scala.annotation.tailrec
-
 package object parser {
 
   implicit class PsiBuilderExt[B <: PsiBuilder](private val repr: B) extends AnyVal {
@@ -44,25 +42,31 @@ package object parser {
       case _ => false
     }
 
-    def lookBack(): IElementType = lookBack(n = 1)
-
-    @tailrec
-    private def lookBack(n: Int, step: Int = 1): IElementType = repr.rawLookup(-step) match {
-      case whiteSpace if TokenSets.WHITESPACE_OR_COMMENT_SET.contains(whiteSpace) => lookBack(n, step + 1)
-      case result if n == 0 => result
-      case _ => lookBack(n - 1, step + 1)
+    def lookBack(expected: IElementType): Boolean = {
+      val (newSteps, _) = skipWhiteSpacesAndComments(1)
+      val (_, actual) = skipWhiteSpacesAndComments(newSteps + 1)
+      expected == actual
     }
+
+    @annotation.tailrec
+    final def skipWhiteSpacesAndComments(steps: Int,
+                                         accumulator: IElementType = null): (Int, IElementType) =
+      repr.getCurrentOffset match {
+        case offset if steps < offset =>
+          repr.rawLookup(-steps) match {
+            case whiteSpace if TokenSets.WHITESPACE_OR_COMMENT_SET.contains(whiteSpace) => skipWhiteSpacesAndComments(steps + 1, whiteSpace)
+            case result => (steps, result)
+          }
+        case _ => (steps, accumulator)
+      }
   }
 
-  import parser.parsing.builder.{ScalaPsiBuilder, ScalaPsiBuilderImpl}
-
-  implicit class ScalaPsiBuilderExt(private val repr: ScalaPsiBuilder) extends AnyVal {
+  implicit class ScalaPsiBuilderExt(private val repr: parser.parsing.builder.ScalaPsiBuilder) extends AnyVal {
 
     def consumeTrailingComma(expectedBrace: IElementType): Boolean = {
       val result = repr.isTrailingComma &&
         repr.predict {
-          case builder: ScalaPsiBuilderImpl if expectedBrace == builder.getTokenType => builder.findPreviousNewLine.isDefined
-          case _ => false
+          expectedBrace == _.getTokenType && findPreviousNewLine.isDefined
         }
 
       if (result) {
@@ -71,9 +75,19 @@ package object parser {
       result
     }
 
+    def findPreviousNewLine: Option[String] = {
+      val (steps, _) = repr.skipWhiteSpacesAndComments(1)
+
+      val originalSubText = repr.getOriginalText.subSequence(
+        repr.rawTokenTypeStart(1 - steps),
+        repr.rawTokenTypeStart(0)
+      ).toString
+      if (originalSubText.contains('\n')) Some(originalSubText)
+      else None
+    }
   }
 
-  @tailrec
+  @annotation.tailrec
   private[this] def matchTokenTypes(builder: PsiBuilder, list: List[IElementType]): Boolean = list match {
     case Nil => true
     case head :: tail if head == builder.getTokenType && !builder.eof =>
